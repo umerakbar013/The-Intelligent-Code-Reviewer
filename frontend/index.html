@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligent Code Reviewer</title>
+    <!-- Tailwind CSS for utility-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Highlight.js for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <!-- Configure Tailwind with custom prose colors to match the new output palette -->
+    <script>
+        tailwind.config = {
+          theme: {
+            extend: {
+              prose: {
+                cyan: {
+                  css: {
+                    '--tw-prose-body': '#e4e4e7', // zinc-200
+                    '--tw-prose-headings': '#22d3ee', // cyan-400
+                    '--tw-prose-code': '#67e8f9', // cyan-300
+                    '--tw-prose-pre-bg': '#18181b', // zinc-900
+                    '--tw-prose-pre-code': '#e4e4e7', // zinc-200
+                  },
+                },
+              },
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen antialiased">
+    <!-- Main Header Bar -->
+    <header class="p-6 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl font-bold tracking-tight">Code<span class="text-cyan-400">Reviewer</span></span>
+            </div>
+            <span class="text-sm font-mono px-3 py-1 bg-zinc-900 border border-zinc-700 rounded-full text-zinc-400">Model: Gemini Pro</span>
+        </div>
+    </header>
+
+    <main class="p-6 md:p-10">
+        <!-- Asymmetric Dashboard Grid (Input 2/5, Output 3/5 on large screens) -->
+        <div class="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-5 gap-10">
+            
+            <!-- Source Code Input Card -->
+            <div class="xl:col-span-2 space-y-6">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl relative group">
+                    <!-- Subtle design detail: Cyberpunk corner border -->
+                    <div class="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-cyan-500 rounded-tl-md group-hover:border-cyan-400 transition-colors"></div>
+                    
+                    <div class="flex items-center justify-between gap-4 mb-6">
+                        <h2 class="text-2xl font-semibold text-cyan-400 flex items-center gap-2">
+                            <span class="text-cyan-500 font-mono">&gt;</span> Input Source
+                        </h2>
+                        <select id="language" class="font-mono text-sm bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-zinc-100 outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-600 transition-all cursor-pointer">
+                            <option value="python">python</option>
+                            <option value="javascript">javascript</option>
+                            <option value="java">java</option>
+                            <option value="typescript">typescript</option>
+                        </select>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="codeInput" class="w-full h-[55vh] bg-zinc-950/50 border border-zinc-700 rounded-xl p-5 text-sm font-mono text-cyan-100 outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-600 transition-all resize-none shadow-inner tracking-wide" placeholder="// Paste raw code block here..."></textarea>
+                    </div>
+                    
+                    <button id="reviewBtn" class="mt-6 w-full bg-cyan-600 hover:bg-cyan-500 text-cyan-950 font-bold py-4 rounded-xl transition-all shadow-md active:scale-[0.98] focus:ring-2 focus:ring-cyan-300">
+                        Initiate AI Audit &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- Analysis Report Card -->
+            <div class="xl:col-span-3">
+                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl h-full flex flex-col relative group">
+                    <!-- Subtle design detail: Cyberpunk corner border (Output Purple) -->
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-purple-500 rounded-br-md group-hover:border-purple-400 transition-colors"></div>
+
+                    <h2 class="text-2xl font-semibold text-purple-400 mb-6 flex items-center gap-2">
+                        <span class="text-purple-500 font-mono">::</span> Intelligence Report
+                    </h2>
+                    
+                    <!-- Main Output Area. Configured with prose-cyan and other prose styling to match new palette -->
+                    <div id="outputPanel" class="flex-grow w-full bg-zinc-950/50 border border-zinc-700 rounded-xl p-6 overflow-y-auto shadow-inner prose prose-invert prose-cyan max-w-none prose-h3:text-cyan-400 prose-pre:!bg-zinc-900 prose-pre:border prose-pre:border-zinc-700 prose-code:text-cyan-300 prose-h3:font-mono prose-h3:tracking-tight font-sans text-zinc-200">
+                        <p class="text-zinc-500 italic font-mono text-sm">Awaiting source code ingestion...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configure Marked.js to integrate with Highlight.js
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            langPrefix: 'hljs language-'
+        });
+
+        // Handle the API Request
+        document.getElementById('reviewBtn').addEventListener('click', async () => {
+            const code = document.getElementById('codeInput').value;
+            const language = document.getElementById('language').value;
+            const outputPanel = document.getElementById('outputPanel');
+            const btn = document.getElementById('reviewBtn');
+
+            if (!code.trim()) return;
+
+            // Update UI to Loading State
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-pulse">Processing Analysis...</span>';
+            outputPanel.innerHTML = '<p class="text-zinc-400 font-mono animate-pulse text-sm">Synchronizing code-as-context pipeline...</p>';
+
+            try {
+                // Issue request to the FastAPI Backend
+                const response = await fetch('http://localhost:8000/api/review', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, language })
+                });
+
+                if (!response.ok) throw new Error('API request failed');
+
+                const data = await response.json();
+                
+                // Render markdown and apply syntax highlighting automatically
+                outputPanel.innerHTML = marked.parse(data.markdown_output);
+                
+            } catch (error) {
+                outputPanel.innerHTML = `<p class="text-red-400 font-mono">Error detected: ${error.message}</p>`;
+            } finally {
+                // Reset UI State
+                btn.disabled = false;
+                btn.innerText = 'Initiate AI Audit →';
+            }
+        });
+    </script>
+</body>
+</html>
